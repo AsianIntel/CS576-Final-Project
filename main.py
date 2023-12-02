@@ -1,7 +1,7 @@
-from PyQt6.QtCore import QDir, QUrl
+from PyQt6.QtCore import QDir, QUrl, Qt
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QApplication, QStyle, QVBoxLayout, QHBoxLayout)
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QApplication, QStyle, QVBoxLayout, QHBoxLayout, QSlider)
 import sys
 
 from query import find_query_video
@@ -15,8 +15,12 @@ class VideoPlayer(QMainWindow):
         self.media_player = QMediaPlayer()
         self.audio_player = QAudioOutput()
         self.media_player.setAudioOutput(self.audio_player)
+        self.media_player.durationChanged.connect(self.duration_changed)
 
         video_widget = QVideoWidget()
+
+        self.slider = QSlider(Qt.Orientation.Horizontal)
+        self.slider.valueChanged.connect(self.slider_value_changed)
 
         self.play_button = QPushButton()
         self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
@@ -27,8 +31,12 @@ class VideoPlayer(QMainWindow):
         self.pause_button.clicked.connect(self.pause_video)
 
         self.reset_button = QPushButton()
-        self.reset_button.setText("Reset")
+        self.reset_button.setText("Reset to beginning")
         self.reset_button.clicked.connect(self.reset_video)
+
+        self.reset_query_button = QPushButton()
+        self.reset_query_button.setText("Reset to query")
+        self.reset_query_button.clicked.connect(self.reset_query_video)
 
         widget = QWidget(self)
         self.setCentralWidget(widget)
@@ -37,9 +45,11 @@ class VideoPlayer(QMainWindow):
         button_layout.addWidget(self.play_button)
         button_layout.addWidget(self.pause_button)
         button_layout.addWidget(self.reset_button)
+        button_layout.addWidget(self.reset_query_button)
 
         layout = QVBoxLayout()
         layout.addWidget(video_widget)
+        layout.addWidget(self.slider)
         layout.addLayout(button_layout)
 
         widget.setLayout(layout)
@@ -51,8 +61,10 @@ class VideoPlayer(QMainWindow):
         print(file_url)
         self.media_player.setSource(file_url)
 
-    def set_video_position(self, position):
-        self.media_player.setPosition(position)
+    def set_query_position(self, query_position):
+        self.query_position = query_position
+        self.media_player.setPosition(query_position)
+        self.slider.setValue(self.query_position)
 
     def start_video(self):
         self.media_player.play()
@@ -62,6 +74,19 @@ class VideoPlayer(QMainWindow):
 
     def reset_video(self):
         self.media_player.setPosition(0)
+        self.slider.setValue(0)
+
+    def reset_query_video(self):
+        self.media_player.setPosition(self.query_position)
+        self.slider.setValue(self.query_position)
+
+    def duration_changed(self, duration):
+        self.duration = duration
+        self.slider.setMinimum(0)
+        self.slider.setMaximum(duration)
+
+    def slider_value_changed(self, slider_value):
+        self.media_player.setPosition(slider_value)
 
 if __name__ == "__main__":
     query_video_path = sys.argv[1]
@@ -72,6 +97,6 @@ if __name__ == "__main__":
     video_player = VideoPlayer()
     video_player.resize(640, 480)
     video_player.set_video_file(f"videos/{result['video_name']}")
-    video_player.set_video_position(result['match_start_database'] * 1000)
+    video_player.set_query_position(result['match_start_database'] * 1000)
     video_player.show()
     sys.exit(app.exec())
