@@ -63,7 +63,7 @@ def find_query_in_database(query_path, database_index):
                 best_match_info = {
                     'video_name': video_name,
                     'match_start_query': 0,
-                    'match_start_database': i
+                    'match_start_database': i * 30
                 }
 
     return best_match_info

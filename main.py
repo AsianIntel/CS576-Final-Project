@@ -1,7 +1,7 @@
 from PyQt6.QtCore import QDir, QUrl, Qt
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 from PyQt6.QtMultimediaWidgets import QVideoWidget
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QApplication, QStyle, QVBoxLayout, QHBoxLayout, QSlider)
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QPushButton, QApplication, QStyle, QVBoxLayout, QHBoxLayout, QSlider, QLabel)
 import sys
 
 from query import find_query_video
@@ -16,11 +16,16 @@ class VideoPlayer(QMainWindow):
         self.audio_player = QAudioOutput()
         self.media_player.setAudioOutput(self.audio_player)
         self.media_player.durationChanged.connect(self.duration_changed)
+        self.media_player.positionChanged.connect(self.position_changed)
 
         video_widget = QVideoWidget()
 
         self.slider = QSlider(Qt.Orientation.Horizontal)
         self.slider.valueChanged.connect(self.slider_value_changed)
+
+        self.duration_label = QLabel()
+        self.duration_label.setText("xx:xx / xx:xx")
+        self.duration_label.setFixedHeight(20)
 
         self.play_button = QPushButton()
         self.play_button.setIcon(self.style().standardIcon(QStyle.StandardPixmap.SP_MediaPlay))
@@ -47,9 +52,13 @@ class VideoPlayer(QMainWindow):
         button_layout.addWidget(self.reset_button)
         button_layout.addWidget(self.reset_query_button)
 
+        duration_layout = QHBoxLayout()
+        duration_layout.addWidget(self.slider)
+        duration_layout.addWidget(self.duration_label)
+
         layout = QVBoxLayout()
         layout.addWidget(video_widget)
-        layout.addWidget(self.slider)
+        layout.addLayout(duration_layout)
         layout.addLayout(button_layout)
 
         widget.setLayout(layout)
@@ -88,6 +97,17 @@ class VideoPlayer(QMainWindow):
     def slider_value_changed(self, slider_value):
         self.media_player.setPosition(slider_value)
 
+    def position_changed(self, position):
+        duration_seconds = int(self.duration / 1000)
+
+        duration_minutes = int(duration_seconds / 60)
+        duration_seconds_text = duration_seconds % 60
+
+        timestamp_seconds = int(position / 1000)
+        timestamp_minutes = int(timestamp_seconds / 60)
+        timestamp_seconds_text = timestamp_seconds % 60
+        self.duration_label.setText(f"{timestamp_minutes:02d}:{timestamp_seconds_text:02d} / {duration_minutes:02d}:{duration_seconds_text:02d}")
+
 if __name__ == "__main__":
     query_video_path = sys.argv[1]
     result = find_query_video(query_video_path)
@@ -97,6 +117,6 @@ if __name__ == "__main__":
     video_player = VideoPlayer()
     video_player.resize(640, 480)
     video_player.set_video_file(f"videos/{result['video_name']}")
-    video_player.set_query_position(result['match_start_database'] * 1000)
+    video_player.set_query_position(result['match_start_database'] // 30 * 1000)
     video_player.show()
     sys.exit(app.exec())
